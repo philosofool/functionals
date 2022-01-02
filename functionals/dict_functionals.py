@@ -53,8 +53,6 @@ def has_keys(keys: List, every: bool = True, only: bool = True) -> Callable[[dic
         return bool(dict_)
     return _func
 
-
-
 def filter_values(mapping: FunctionalMap):
     """Return True if predicate in mapping is true for all.""" 
     def _func(dict_: dict) -> Callable[[Dict[Any, Callable]], dict]:
@@ -80,17 +78,29 @@ def map_values(mapping: FunctionalMap):
         return {k: anon(k, v) for k, v in dict_.items()}
     return _func
 
-def flatten_dict():
+def flatten_dict(keys=None):
     """Flatten the dictionary, i.e., make each key have a non-dict value,
     adding keys from dict valued keys.
+
+    Parameter
+    ---------
+    keys: 
+        Optional. The keys to be flattened.
     """
+    def prefix_key(key, k):
+        return str(key) + '__' + str(k)
     def _func(dict_):
         out = {k: v for k, v in dict_.items() if type(v) != dict}
-        for key in dict_:
-            if type(dict_[key]) == dict:
-                out.update({k: v for k, v in dict_[key].items()})
+        if keys is None:
+            _keys = [key for key in dict_ if key not in out]
+        else:
+            _keys = keys
+        for key in _keys:
+            out.update({prefix_key(key, k): v for k, v in dict_[key].items()})
         return out
     return _func
+
+assert flatten_dict(keys=['d'])({"a": 1, 'd': {"b":1, 'c': 1}}) == {'a': 1, 'd__b': 1, 'd__c': 1}
 
 def sequential_func(*functions):
     """Apply functions in order."""
