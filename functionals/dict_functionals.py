@@ -24,11 +24,14 @@ flatten_dictionary:
     Return a dictionary that inherits the key-value pairs of any dictionary-valued key.
 
 """
+
 from typing import List, Callable, Dict, Any
+from functools import singledispatch, lru_cache
+from collections import namedtuple
 
 FunctionalMap = Dict[Any, Callable]
 
-def has_keys(keys: List, every: bool = True, only: bool = True) -> Callable[[dict], dict]:
+def has_keys(keys: List, every: bool = True, only: bool = False) -> Callable[[dict], dict]:
     """True if all/only keys are dictionary.
     
     every: bool
@@ -53,29 +56,56 @@ def has_keys(keys: List, every: bool = True, only: bool = True) -> Callable[[dic
         return bool(dict_)
     return _func
 
+
 def filter_values(mapping: FunctionalMap):
     """Return True if predicate in mapping is true for all.""" 
+    @singledispatch
     def _func(dict_: dict) -> Callable[[Dict[Any, Callable]], dict]:
-        return all(mapping[k](v) for k, v in dict_.items() if k in mapping)
+        return all(mapping[k](dict_[k]) for k in dict_)
+
+    @_func.register
+    def _(dict_: tuple):
+        return all(mapping[k](getattr(dict_, k)) for k in mapping)
     return _func
 
 def extract_keys(keys: List[str]) -> Callable[[dict], dict]:
     """Returns dictionary whose only keys are keys parameter."""
+    @singledispatch
     def _func(dict_: dict) -> dict:
         return {k: v for k, v in dict_.items() if k in keys}
+
+    @_func.register
+    def _(dict_: tuple):
+        fields = [field for field in dict_.fieldnames if field in keys]
+        new_namedtuple = nt_builder('extracted', *fields)
+        return new_namedtuple._make(getattr(dict_, f) for f in fields)
     return _func
 
 def drop_keys(keys: List[str]) -> Callable[[dict], dict]:
     """Returns dictionary without keys in keys parameter."""
+    @singledispatch
     def _func(dict_: dict) -> dict:
         return {k: v for k, v in dict_.items() if k not in keys}
+
+    @_func.register
+    def _(dict_: tuple):
+        fields = [field for field in dict_.fieldnames if field not in keys]
+        new_namedtuple = nt_builder('dropped', *fields)
+        return new_namedtuple._make(getattr(dict_, f) for f in fields)
     return _func
 
 def map_values(mapping: FunctionalMap):
     """Apply a mapping to each column."""
+    @singledispatch
     def _func(dict_: dict) -> dict:
         anon = (lambda k, v: mapping[k](v) if k in mapping else v)
         return {k: anon(k, v) for k, v in dict_.items()}
+
+    @_func.register
+    def _(dict_: tuple) -> tuple:
+        mapped = {k: mapping[k](getattr(dict_, k)) for k in mapping}
+        return dict_._replace(**mapped)
+    
     return _func
 
 def flatten_dict(keys=None):
@@ -99,8 +129,6 @@ def flatten_dict(keys=None):
             out.update({prefix_key(key, k): v for k, v in dict_[key].items()})
         return out
     return _func
-
-assert flatten_dict(keys=['d'])({"a": 1, 'd': {"b":1, 'c': 1}}) == {'a': 1, 'd__b': 1, 'd__c': 1}
 
 def sequential_func(*functions):
     """Apply functions in order."""
