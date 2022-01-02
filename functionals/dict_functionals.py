@@ -46,8 +46,8 @@ def has_keys(keys: List, every: bool = True, only: bool = False) -> Callable[[di
     """
     def _func(dict_):
         if every and only:
-            has_all = all([k in keys for k in dict_])
-            has_only = all([k in dict_.keys() for k in keys])
+            has_only = all([k in keys for k in dict_])
+            has_all = all([k in dict_.keys() for k in keys])
             return has_all and has_only
         if every:
             return all([k in dict_ for k in keys])
