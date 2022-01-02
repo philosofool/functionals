@@ -28,6 +28,7 @@ flatten_dictionary:
 from typing import List, Callable, Dict, Any
 from functools import singledispatch, lru_cache
 from collections import namedtuple
+from .utils import nt_builder
 
 FunctionalMap = Dict[Any, Callable]
 
@@ -76,7 +77,7 @@ def extract_keys(keys: List[str]) -> Callable[[dict], dict]:
 
     @_func.register
     def _(dict_: tuple):
-        fields = [field for field in dict_.fieldnames if field in keys]
+        fields = [field for field in dict_._fields if field in keys]
         new_namedtuple = nt_builder('extracted', *fields)
         return new_namedtuple._make(getattr(dict_, f) for f in fields)
     return _func
@@ -89,7 +90,7 @@ def drop_keys(keys: List[str]) -> Callable[[dict], dict]:
 
     @_func.register
     def _(dict_: tuple):
-        fields = [field for field in dict_.fieldnames if field not in keys]
+        fields = [field for field in dict_._fields if field not in keys]
         new_namedtuple = nt_builder('dropped', *fields)
         return new_namedtuple._make(getattr(dict_, f) for f in fields)
     return _func
