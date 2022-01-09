@@ -62,7 +62,7 @@ def filter_values(mapping: FunctionalMap):
     """Return True if predicate in mapping is true for all.""" 
     @singledispatch
     def _func(dict_: dict) -> Callable[[Dict[Any, Callable]], dict]:
-        return all(mapping[k](dict_[k]) for k in dict_)
+        return all(mapping[k](dict_[k]) for k in mapping)
 
     @_func.register
     def _(dict_: tuple):
