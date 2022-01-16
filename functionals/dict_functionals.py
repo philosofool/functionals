@@ -25,7 +25,7 @@ flatten_dictionary:
 
 """
 
-from typing import List, Callable, Dict, Any
+from typing import List, Callable, Dict, Any, Union
 from functools import singledispatch, lru_cache
 from collections import namedtuple
 from .utils import nt_builder
@@ -62,7 +62,7 @@ def filter_values(mapping: FunctionalMap):
     """Return True if predicate in mapping is true for all.""" 
     @singledispatch
     def _func(dict_: dict) -> Callable[[Dict[Any, Callable]], dict]:
-        return all(mapping[k](dict_[k]) for k in dict_)
+        return all(mapping[k](dict_[k]) for k in mapping)
 
     @_func.register
     def _(dict_: tuple):
@@ -82,6 +82,22 @@ def extract_keys(keys: List[str]) -> Callable[[dict], dict]:
         return new_namedtuple._make(getattr(dict_, f) for f in fields)
     return _func
 
+def add_keys(new_keys: dict) -> Callable[[dict], dict]:
+    """Return a dictionary with keys added."""
+    @singledispatch
+    def _func(dict_: dict) -> dict:
+        out = dict_.copy()
+        out.update(new_keys)
+        return out
+
+    @_func.register(tuple)
+    def _(dict_: tuple):
+        dict_ = dict_._asdict()
+        dict_.update(new_keys)
+        new_namedtuple = nt_builder('rekeyed', tuple(dict_.keys()))
+        return new_namedtuple._make(**dict_)
+    return _func
+
 def drop_keys(keys: List[str]) -> Callable[[dict], dict]:
     """Returns dictionary without keys in keys parameter."""
     @singledispatch
@@ -91,9 +107,37 @@ def drop_keys(keys: List[str]) -> Callable[[dict], dict]:
     @_func.register
     def _(dict_: tuple):
         fields = [field for field in dict_._fields if field not in keys]
-        new_namedtuple = nt_builder('dropped', *fields)
+        new_namedtuple = nt_builder('dropped', fields)
         return new_namedtuple._make(getattr(dict_, f) for f in fields)
     return _func
+
+def rekey(mapping: Union[Callable, dict]):
+    """Change key names in a dictionary.
+
+    Parameters
+    ----------
+    mapping: 
+        Either a dictionary or function. If a dictionary, any key will in an input 
+        dictionary will be changed to its value in mapping, if the key exists. If a function,
+        the function is applied to each key in the dictionary.
+
+    Examples
+    --------
+    >>>> rekey(str)({1: 'one'})
+    {'1': 'one'}
+    >>>> rekey({1: 'one'})({1: 1})
+    {'one': 1}
+    """ 
+    def _func(dict_):
+        if isinstance(mapping, dict):
+            out = dict_.copy()
+            out.update({mapping[k]: v for k, v in mapping.items()})
+            drop_keys = [key for key in mapping if key not in mappying.values()]
+            return drop_keys([key for key in dict_ if key in drop_keys])(out)
+        return {mapping(k): v for k, v in dict_.items()}
+    return _func
+
+
 
 def map_values(mapping: FunctionalMap):
     """Apply a mapping to each column."""
