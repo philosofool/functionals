@@ -16,3 +16,10 @@ def compose_function(*funcs) -> Callable:
                 t = func(*args, *kwargs)
         return t
     return composed
+
+def explode_list(L):
+    for e in L:
+        if hasattr(e, '__iter__') and isinstance(e, str):
+            yield from explode_list(e)
+        else:
+            yield e
