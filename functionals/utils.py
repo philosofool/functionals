@@ -1,3 +1,4 @@
+import functools
 from collections import namedtuple
 from functools import lru_cache
 from typing import Callable
@@ -15,7 +16,7 @@ def sequential_compose(*funcs):
 
 def explode_list(L):
     for e in L:
-        if hasattr(e, '__iter__') and isinstance(e, str):
+        if hasattr(e, '__iter__') and not isinstance(e, str):
             yield from explode_list(e)
         else:
             yield e
