@@ -8,8 +8,8 @@ def nt_builder(name: str, fields) -> namedtuple:
     """Build a named tuple."""
     return namedtuple(name, fields)
     
-def sequential_compose(*funcs):
-    """Compose function: sequential_compose(f, g, h)(x) == h(g(f(x)))."""
+def rcompose(*funcs):
+    """Compose function: rcompose(f, g, h)(x) == h(g(f(x)))."""
     def compose2(f, g):
         return lambda *a, **kw: g(f(*a, **kw))
     return functools.reduce(compose2, funcs)
@@ -27,8 +27,9 @@ def explode_list(L):
 def squares(*args):
     return (x**2 for x in args)
 
-assert sequential_compose(squares, sum, lambda x: x == 36)(3, 3, 3, 3)
-assert sequential_compose(squares, sum, lambda x: x == 25)(3, 4)
+assert rcompose(squares, sum, lambda x: x == 36)(3, 3, 3, 3) # accepts > 2 args.
+assert rcompose(squares, sum, lambda x: x == 25)(3, 4) # accepts t20 args
+assert rcompose(lambda: 'works with single function "composition"')() == 'works with single function "composition"' # 
 
 assert list(explode_list([1, 2, 3])) == [1, 2, 3]
 assert list(explode_list([1, [2, 3]])) == [1, 2, 3]
